@@ -1,0 +1,95 @@
+name: Timoni CD with multiple environments
+
+on:
+  repository_dispatch:
+    types: [update-image]
+
+permissions:
+  contents: write
+
+env:
+  IMAGE_DIGEST: ${{ github.event.client_payload.image_digest }}
+  REGISTRY: ${{ github.event.client_payload.registry }}
+  ENVIRONMENT: ${{ github.event.client_payload.environment }}
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    environment: ${{ github.event.client_payload.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout latest master
+        run: |
+          git fetch origin master
+          git checkout master
+          git reset --hard origin/master
+
+      - name: Set environment paths
+        id: vars
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          ENV="${ENVIRONMENT}"
+
+          if [[ "$ENV" == "beta" ]]; then
+            PROJECT="creative-studio-beta"
+            FILE="modules/creative-studio/beta/beta-values.cue"
+
+          elif [[ "$ENV" == "stage" ]]; then
+            PROJECT="creative-studio-stage"
+            FILE="modules/creative-studio/stage/stage-values.cue"
+
+          elif [[ "$ENV" == "prod" ]]; then
+            PROJECT="creative-studio-prod"
+            FILE="modules/creative-studio/values.cue"
+
+          else
+            echo "Unsupported environment: $ENV"
+            exit 1
+          fi
+
+          echo "project=$PROJECT" >> $GITHUB_OUTPUT
+          echo "file=$FILE" >> $GITHUB_OUTPUT
+
+      - name: Update image digest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TARGET_DIGEST="${IMAGE_DIGEST#*@}"
+          PROJECT="${{ steps.vars.outputs.project }}"
+          TARGET_REPOSITORY="${REGISTRY}/${PROJECT}/creative-studio"
+
+          FILES=("${{ steps.vars.outputs.file }}")
+
+          for FILE in "${FILES[@]}"; do
+            echo "Updating $FILE"
+
+            sed -i -E "s|^([[:space:]]*)repository:.*|\1repository: \"${TARGET_REPOSITORY}\"|" "$FILE"
+            sed -i -E "s|^([[:space:]]*)digest:.*|\1digest: \"${TARGET_DIGEST}\"|" "$FILE"
+
+            echo "Updated file:"
+            cat "$FILE"
+          done
+
+      - name: Commit and push changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+
+          git commit -m "chore(${ENVIRONMENT}): promote image ${IMAGE_DIGEST}"
+          git push origin master
