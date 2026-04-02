@@ -10,7 +10,7 @@ values: {
 
     image: {
         repository: "43.205.228.58/creative-studio-prod/creative-studio"
-        digest: "sha256:4a72c333027b9140bda6fec8a3e690f09145b5cf303846acceaaf725c1722a16"
+        digest: "sha256:601cc09ac4d453a802616deb11c3e3e32ba2d90775bccbb1f9042500230de748"
 		tag: ""
     }
 	replicas: 3
