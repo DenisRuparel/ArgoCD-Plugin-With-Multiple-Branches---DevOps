@@ -8,8 +8,8 @@ values: {
 	}
 	app: "creative-studio"
 	image: {
-        repository: "43.205.228.58/creative-studio-stage/creative-studio"
-        digest: "sha256:c0c3f70a97b8307baba64b85e5aa7dde28e285ab1a44f94ca591dbc349a7c214"
+        repository: "3.7.100.53/creative-studio-stage/creative-studio"
+        digest: "sha256:7b9b13e7516047e85adf2233bbfb0a5e86ddce5b110f1192975a4bc9ea21e960"
 		tag: ""
     }
 	replicas: 2
